@@ -1,8 +1,7 @@
 /*
  * AUTHOR: HIMANSHU GUPTA
- * himgupt2@tamu.edu
+ * himgupt2@gmail.com
  *
- * ECEN 602 Fall 17
  * Echo server
  */
 
