@@ -1,8 +1,3 @@
-Contributions
-
-Server and Utility files : Jointly written and tested by Himanshu Gupta and Adarsh
-
----------------------------------------------------------
 
 Build Instructions
 
@@ -46,25 +41,24 @@ steps are taken:
 4. For RRQ requests:
 	a. Write the buffer message coming from client in an array
 	b. extract the filename, check if it exists, if not send an error
-	c. create new socket for this child process to use which will be used to communicate with the
-		client.
-	d. Set an alarm signal after sending the data and before reading the ack
+	c. create new socket for this child process to use which will be used to communicate with the client.
+	d. Set an alarm signal after sending the data and before reading the ack.
 	e. Reset the alarm if ack comes in time.
-	f. Copy the data in file and cleanup the child process using the SIGCHILD handler set in the main method
+	f. Copy the data in file and cleanup the child process using the SIGCHILD handler set in the main method.
 5. For WRQ request:
 	a. First verify if the file sent is already present, if yes send an error
 	b. start sending the ack messages based on the block number received in the data message
 	c. use a loop to keep reading the messages from client and write the data in a file
-	d. Use a similar signal handle to retransmit the ack in case it is lost, clean up after 10 retry
+	d. Use a similar signal handle to retransmit the ack in case it is lost, clean up after 10 retry.
 
 6. Kill the client after transfer is done.
 
 Code structure
 
-  The server code first creates a socket, binds the socket and starts reading from the socket. There is no listen or connect since 
+The server code first creates a socket, binds the socket and starts reading from the socket. There is no listen or connect since 
 User Datagram Protocol is used. Upon receiving a datagram from the client the server forks it and reads the opcode (bytes 1-2) , 
-and the filename (bytes 3-4). If the opcode is 1 then it is a RRQ request and if it is 2 it is then a WRQ request and if it is 3, it is
- interpreted as data packet.
+and the filename (bytes 3-4). If the opcode is 1 then it is a RRQ request and if it is 2 it is then a WRQ request and if it is 3, it is 
+interpreted as data packet.
 
 
  If the main function reads an RRQ in the opcode, it calls the function tftp_handle_rrq. The tftp_handle_rrq function checks the mode of the 
@@ -80,8 +74,8 @@ retransmission for 9 more times. If it still doesn’t get the ACK, it aborts th
 tftp_handle_rrq function, which calls the tftp_send_block_data  again and again till the EOF (End Of File) is reached. 
 
 
- BONUS :
-  If the main function on the other hand  reads a WRQ(write request) form the client, which is denoted by a 2 in the opcode section of the 
+BONUS feature:
+If the main function on the other hand  reads a WRQ(write request) form the client, which is denoted by a 2 in the opcode section of the 
 WRQ packet. The main function forks the client and calls the tftp_handle_wrq function. The function calls the get_up_sock function. 
 This creates a new socket for the particular client .The function sends an ACK to the client. Once the ACK is sent, It check if the file 
 name in the system already exists. This is got from the WRQ datagram from the client (From byte 3- its length). If the file already exists
