@@ -1,0 +1,101 @@
+Contributions
+
+Server and Utility files : Jointly written and tested by Himanshu Gupta and Adarsh
+
+---------------------------------------------------------
+
+Build Instructions
+
+make clean:
+        deletes the binaries and object files
+
+make:
+        Builds the following binaries:
+        server
+---------------------------------------------------------
+
+How to Run
+
+Start server with the following command
+
+	./server 127.0.0.1 4000
+
+this starts the tftp server on port 4000
+
+Connect from a standard tftp client on ubuntu m/c and use get/put methods to transfer file
+
+---------------------------------------------------------
+
+As discussed in the handout the tftp server is organised into following components:
+
+1. Handling UDP packets
+2. Implementing timeouts for lost/corrupted packets
+3. Modes of file transfer: Netascii and binary
+4. Sequence number wrap around after 65535
+5. Accepting read/write requests
+
+Server architecture
+
+At first we start the server with an IP address and port number. At this point, since this is a UDP 
+server, there is no need for a specific listener. We simply bind the socket to a particular address. 
+We allow the server to fork a new process when a new client is connected, from there the following 
+steps are taken:
+1. Start an infinite loop where the server will accept read and write requests from client
+2. Read the opcode from request and fork a new process to handle this client
+3. Determine the type of request from opcode and call the appropriate handle to serve the client
+4. For RRQ requests:
+	a. Write the buffer message coming from client in an array
+	b. extract the filename, check if it exists, if not send an error
+	c. create new socket for this child process to use which will be used to communicate with the
+		client.
+	d. Set an alarm signal after sending the data and before reading the ack
+	e. Reset the alarm if ack comes in time.
+	f. Copy the data in file and cleanup the child process using the SIGCHILD handler set in the main method
+5. For WRQ request:
+	a. First verify if the file sent is already present, if yes send an error
+	b. start sending the ack messages based on the block number received in the data message
+	c. use a loop to keep reading the messages from client and write the data in a file
+	d. Use a similar signal handle to retransmit the ack in case it is lost, clean up after 10 retry
+
+6. Kill the client after transfer is done.
+
+Code structure
+
+  The server code first creates a socket, binds the socket and starts reading from the socket. There is no listen or connect since 
+User Datagram Protocol is used. Upon receiving a datagram from the client the server forks it and reads the opcode (bytes 1-2) , 
+and the filename (bytes 3-4). If the opcode is 1 then it is a RRQ request and if it is 2 it is then a WRQ request and if it is 3, it is
+ interpreted as data packet.
+
+
+ If the main function reads an RRQ in the opcode, it calls the function tftp_handle_rrq. The tftp_handle_rrq function checks the mode of the 
+RRQ datagram. Mode is present in the RRQ 1 byte after the “filename” string in the RRQ packet. If the mode is “netascii”, sting formatting
+is done before it is sent. Formatting puts a \r before every \n and \0 after every \r.This function calls get_udp_sock() function to create
+a new socket descriptor for the particular client.
+
+ Sending the data as blocks is done by the function tftp_send_block_data . This function handles the string formatting and sends data 
+in blocks of 512 as per RFC 1350 standard. Each block is of size 516. 4 bytes of header and 512 bytes of data.The first 2 bytes 
+contains the code 3 which is for TFTP DATA. The next 2 bytes is for block number which is wrapped at ((2^{16})-1) .The function 
+waits for an ACK from the client. Else it retransmits the data again and waits for an ACK. If it still doesn’t get an ACK it repeats the 
+retransmission for 9 more times. If it still doesn’t get the ACK, it aborts the transmission. Once it receives the ACK, it returns to 
+tftp_handle_rrq function, which calls the tftp_send_block_data  again and again till the EOF (End Of File) is reached. 
+
+
+ BONUS :
+  If the main function on the other hand  reads a WRQ(write request) form the client, which is denoted by a 2 in the opcode section of the 
+WRQ packet. The main function forks the client and calls the tftp_handle_wrq function. The function calls the get_up_sock function. 
+This creates a new socket for the particular client .The function sends an ACK to the client. Once the ACK is sent, It check if the file 
+name in the system already exists. This is got from the WRQ datagram from the client (From byte 3- its length). If the file already exists
+it calls the function “tftp_send_err_data”. The err function sends a message with opcode 5(enum - TFTP_ERROR). The data in the 
+message contains the error string	 “file already exists” and it exits the function. The flow goes to the main and it waits for the next 
+datagram. If the file doesn’t exist, the file is created in the tftp_handle_wrq function. Once it is created,it waits for the data from the 
+client. Once the client sends data, it writes to the particular file. If the client doesn’t send data (ie. server goes into a timeout), 
+it sends the ACK for the previous message. And waits again for the next block from the client. This process is done for a maximum of 
+10 times. If the server doesn’t receive the next block numbered message, after 10 times, it exits to main and waits for the next datagram,
+from an new client. On the other hand if the server receives the correct block , it then sends an ACK with the correct block number. 
+It then writes the file with the data. Once a non-full(<512 characters of data) or empty  datagram is received, the server 
+closes the file and exits the tftp_handle_wrq function.
+
+The server now waits for the next client to respond.
+
+
+
