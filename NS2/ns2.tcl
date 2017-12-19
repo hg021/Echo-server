@@ -3,6 +3,7 @@
 #Group 20 ECEN 602
 #Himanshu Gupta, Adarsh
 #Network simulation
+#Contact: himgupt2@gmail.com
 #
 
 
