@@ -1,0 +1,26 @@
+How to run
+
+ns ns2.tcl <TCP version> <Test case number 1/2/3>
+
+Run the above command to start the simulation of created network
+----------------------------------------------------------------
+
+Code structure
+
+The code first takes the tcp version and test case number as input argument. There are 
+2 different function which are written in the TCL file. 
+
+record process
+finish process
+
+The record process takes the input parameters of incoming bytes in every 1 second, dumps
+them into the output trace file. This file is used by the xgraph to plot the output curve.
+After this we create the network topology, create the two routers R1 and R2 and connect them with 
+1mbps link. Similarly other nodes are created and their link speeds are specified based on the test case.
+This process keeps reocrding the data ecery 1 second.
+
+Then at the end of 400 seconds, finish process is called. We also display the total throughput acheived in 
+this time and amount of data sent on both links.
+
+We start sending the data at 1 second, start record process at 100 second and then end the simulaton at 400 second.
+
