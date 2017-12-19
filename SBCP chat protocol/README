@@ -1,0 +1,89 @@
+---------------------------------------------------------
+
+Build Instructions
+
+make clean:
+        deletes the binaries and object files
+
+make:
+        Builds the following binaries:
+        server, client
+---------------------------------------------------------
+
+How to Run
+
+Start server with the following command
+
+	./server 127.0.0.1 4000 20
+
+this starts the sbcp chat server on port 4000 with 20 maximum clients
+
+Start the client
+
+	./client <username> 127.0.0.1 4000
+
+The username should be unique for every client.
+---------------------------------------------------------
+Code structure:
+
+SERVER
+
+We first take the IP, port number and maximum clients as input from the terminal.
+This helps to start a listener as used in assignment 1. After we start the listener,
+we created a global fd set for master and read. This will maintain the list of all
+available client in our SELECT. After the select is given to the server FD, we listen 
+on this to accept new clients. The select also multiplexes between current client FD
+and server FD. If there is any data to read in the client FD, the sbcp_receive_msg handles
+it. It does a read and based on the type of message it decides what type of messages are coming.
+
+These server first performs a validation of the first message sent by the client. If the USER ID 
+is not unique, we reject the client and send a NAK message to the client. 
+
+The utility file describes 8 different types of messages that can be used by server and client.
+Liste below:
+
+	SB_JOIN = 2,    /* Client sends to server to join chat session */
+        SB_FWD,         /* Server sends to client, contains chat text  */
+        SB_SEND,        /* Client sends to  server, contains chat text */
+        SB_NAK,         /* Server sends to client to reject a request  */
+        SB_OFFLINE,     /* Server sends to client indicating departure of chat participant */
+        SB_ACK,         /* Server sends to client to confirm the JOIN request              */
+        SB_ONLINE,      /* Server sends to client indicating arrival of chat participant   */
+        SB_IDLE,        /* Client sends to server indicating it has been idle, server 
+                           sends to client indicating the username which is idle */
+
+
+Based on the type of message received, client will forward the messages all the chat members. 
+All the module functions are written to create the appropriate type of packet to be sent to 
+client.
+
+The server also implements a IDLE message, where client gets to know if a particular member is not
+active.
+
+-------------------------------------------------------------
+
+CLIENT
+
+
+The client first connects with the server. It then sends a join message.The join message
+establishes a connection with the server by sending a JOIN packet. Once the join packet
+has been sent it waits for an ACK/NAK packet from the server. Upon receipt of an NAK packet, the client quits stating the reason to STDIN.If no packet is received from the server within the timeout period stated by JOIN_IDLE_TIME macro, the client quits the chat. Else, the client gets ready for communication with the server. 
+
+     The select function is used to multiplex between server and stdin messages. A timer is used to control this process. If no message is received from stdin for 10 seconds or so as specified by the IDLE_TIME macro, the timer sends IDLE to the server.
+
+
+-------------------------------------------------------------
+
+TEST CASES
+
+
+1. Normal operation with 3/4 clients
+2. Server rejects duplicate username
+3. Server allows previously used username to connect
+4. Server rejects after maximum client reached
+5. Server sends ACK 
+6. Server send NAK
+7. Server sends ONLINE
+8. Server sends OFFLINE
+9. Server sends IDLE
+
